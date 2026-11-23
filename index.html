@@ -465,7 +465,7 @@ function vQuests(){
     <label class="f">Vision: Was für ein Mensch willst du sein?</label><textarea data-field="vision" rows="2">${esc(S.vision)}</textarea>
     <label class="f">Jahresziel</label><textarea data-field="yearGoal" rows="2">${esc(S.yearGoal)}</textarea></div>
   <div class="secthead"><span class="lbl">Daten</span><span class="dim" style="font-size:12px">${col?'In deinem Konto gespeichert':STANDALONE?'Auf diesem Gerät · '+lastBackupText():'Nur in diesem Browser'}</span></div>
-  <div class="row" style="flex-wrap:wrap">${STANDALONE?`<button class="btn sm gold" data-act="shareBackup">${IC.share} Sicherung teilen</button><button class="btn sm" data-act="fileExport">Als Datei sichern</button><button class="btn sm" data-act="fileImport">Datei laden</button>`:''}<button class="btn sm" data-act="export">Text kopieren</button><button class="btn sm" data-act="importOpen">Text einfügen</button></div><input type="file" id="fileIn" accept="application/json,.json" hidden>`;
+  <div class="row" style="flex-wrap:wrap">${STANDALONE?`<button class="btn sm gold" data-act="shareBackup">${IC.share} Sicherung teilen</button><button class="btn sm" data-act="fileExport">Als Datei sichern</button><button class="btn sm" data-act="fileImport">Datei laden</button>`:''}<button class="btn sm" data-act="export">Text kopieren</button><button class="btn sm" data-act="importOpen">Text einfügen</button></div><input type="file" id="fileIn" accept=".txt,.json,text/plain,application/json" hidden>`;
   return h;
 }
 
@@ -586,15 +586,15 @@ function recSheet(){
   <div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn" data-act="close">Fertig</button><button class="btn gold" data-act="recAdd">Hinzufügen</button></div>`)}
 
 /* ===== backup ===== */
-const backupName=()=>'tagwerk-sicherung-'+today()+'.json';
-const backupBlob=()=>new Blob([JSON.stringify(S,null,1)],{type:'application/json'});
+const backupName=()=>{const n=new Date();return 'tagwerk-sicherung-'+today()+'-'+pad(n.getHours())+pad(n.getMinutes())+'.txt'};
+const backupBlob=()=>new Blob([JSON.stringify(S,null,1)],{type:'text/plain'});
 function markBackup(){S.lastBackup=Date.now();save();render()}
 function downloadBackup(){const l=document.createElement('a');l.href=URL.createObjectURL(backupBlob());l.download=backupName();document.body.appendChild(l);l.click();setTimeout(()=>{URL.revokeObjectURL(l.href);l.remove()},1000)}
 async function shareBackup(){
-  let file=null;try{file=new File([backupBlob()],backupName(),{type:'application/json'})}catch(e){}
+  let file=null;try{file=new File([backupBlob()],backupName(),{type:'text/plain'})}catch(e){}
   if(file&&navigator.canShare&&navigator.canShare({files:[file]})){
     try{await navigator.share({files:[file],title:'Tagwerk-Sicherung',text:'Tagwerk-Sicherung vom '+parseD(today()).toLocaleDateString('de-DE')});markBackup();toast('Sicherung geteilt')}
-    catch(e){if(e&&e.name==='AbortError')toast('Teilen abgebrochen');else{downloadBackup();markBackup();toast('Teilen nicht möglich, Datei gespeichert')}}
+    catch(e){if(e&&e.name==='AbortError')toast('Teilen abgebrochen');else{downloadBackup();markBackup();toast('Teilen nicht möglich, Datei unter Downloads gespeichert')}}
   }else{downloadBackup();markBackup();toast('Teilen nicht verfügbar, Datei unter Downloads gespeichert')}}
 function backupDue(){if(!STANDALONE)return false;if(!S.tasks.length&&!S.quests.length)return false;if(ui.backupSnooze&&Date.now()<ui.backupSnooze)return false;return !S.lastBackup||Date.now()-S.lastBackup>7*864e5}
 function lastBackupText(){if(!S.lastBackup)return 'Noch nie gesichert';const d=Math.floor((Date.now()-S.lastBackup)/864e5);return 'Letzte Sicherung: '+(d===0?'heute':d===1?'gestern':`vor ${d} Tagen`)}
@@ -699,7 +699,7 @@ document.addEventListener('click',e=>{
   case 'import':{let d;try{d=JSON.parse($('#imTxt').value)}catch(x){toast('Ungültiger Text');break}if(!d||!Array.isArray(d.tasks)){toast('Keine Tagwerk-Daten');break}if(!arm(el,'Alles ersetzen?'))break;S=normalize(d);save();closeModal();render();toast('Importiert');break}
   case 'shareBackup':shareBackup();break;
   case 'snoozeBackup':ui.backupSnooze=Date.now()+864e5;saveUi();render();break;
-  case 'fileExport':{const b=new Blob([JSON.stringify(S,null,1)],{type:'application/json'});const l=document.createElement('a');l.href=URL.createObjectURL(b);l.download='tagwerk-sicherung-'+today()+'.json';document.body.appendChild(l);l.click();setTimeout(()=>{URL.revokeObjectURL(l.href);l.remove()},1000);S.lastBackup=Date.now();save();render();toast('Sicherung gespeichert');break}
+  case 'fileExport':{downloadBackup();S.lastBackup=Date.now();save();render();toast('Sicherung gespeichert');break}
   case 'fileImport':$('#fileIn').click();break;
   case 'fileApply':S=normalize(window.__imp);save();closeModal();render();toast('Geladen');break;
   }
